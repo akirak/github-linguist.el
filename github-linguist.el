@@ -1,0 +1,201 @@
+;;; github-linguist.el --- Analyse projects using GitHub Linguist -*- lexical-binding: t -*-
+
+;; Copyright (C) 2022 Akira Komamura
+
+;; Author: Akira Komamura <akira.komamura@gmail.com>
+;; Version: 0.1
+;; Package-Requires: ((emacs "26.1") (project "0.6"))
+;; Keywords: processes
+;; URL: https://github.com/akirak/github-linguist.el
+
+;; This file is not part of GNU Emacs.
+
+;;; License:
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; GitHub
+
+;; You can update information on projects from `project-known-project-roots'
+;; using `github-linguist-update-projects'. You can call the function
+;; periodically using `run-with-idle-timer' or run it interactively.
+
+;; Then you can use `github-linguist-lookup' to retrieve information on a
+;; project. It would be possible to use it inside an annotation function for
+;; completion, but it is not part of this package yet.
+
+;;; Code:
+
+(require 'map)
+(require 'cl-lib)
+(require 'subr-x)
+(require 'project)
+(require 'async)
+
+(defgroup github-linguist nil
+  "Analyse projects using GitHub Linguist."
+  :group 'project)
+
+(defconst github-linguist-git-dir ".git"
+  "Name of the git directory.")
+
+(defcustom github-linguist-executable "linguist"
+  "Executable of the GitHub Linguist."
+  :type 'file)
+
+(defcustom github-linguist-update nil
+  "Whether to force updating of existing entries."
+  :type 'boolean)
+
+(defvar github-linguist-results nil)
+
+;;;; Table operations
+
+(defun github-linguist--normalize (directory)
+  "Normalize the path to DIRECTORY."
+  (file-name-as-directory (file-truename directory)))
+
+(defun github-linguist--init-table ()
+  "Initialize the hash table."
+  (setq github-linguist-results (make-hash-table :test #'equal)))
+
+(defun github-linguist--lookup (directory)
+  "Return the statistics on DIRECTORY, if any."
+  (when github-linguist-results
+    (gethash (github-linguist--normalize directory)
+             github-linguist-results)))
+
+;;;###autoload
+(defalias 'github-linguist-lookup #'github-linguist--lookup)
+
+(defun github-linguist--update (directory result)
+  "Update the statistics on DIRECTORY to RESULT."
+  (unless github-linguist-results
+    (github-linguist--init-table))
+  (puthash (github-linguist--normalize directory)
+           result
+           github-linguist-results)
+  result)
+
+;;;; Process interactions
+
+;;;###autoload
+(defun github-linguist-update-projects (&optional arg)
+  "Update linguist information on the known projects.
+
+If ARG is non-nil, existing projects are updated as well."
+  (interactive "P")
+  (if-let (projects (thread-last
+                        (if (not (or arg github-linguist-update))
+                            (cl-remove-if #'github-linguist--lookup
+                                          (project-known-project-roots))
+                          (project-known-project-roots))
+                      (cl-remove-if #'file-remote-p)
+                      (cl-remove-if-not #'github-linguist--git-project-p)))
+      (progn
+        (message "Started scanning %d linguist projects..." (length projects))
+        (github-linguist--run-many projects))
+    (message "No project to update")))
+
+(defun github-linguist--git-project-p (root)
+  "Return non-nil if ROOT is a git directory."
+  (file-exists-p (expand-file-name github-linguist-git-dir
+                                   root)))
+
+(defvar github-linguist-library (or load-file-name (buffer-file-name))
+  "Path to this library.")
+
+(defun github-linguist--run-many (directories)
+  "Run linguist on many DIRECTORIES and update the cache."
+  (async-start
+   `(lambda ()
+      (load ,github-linguist-library nil t)
+      (let ((queue ',directories)
+            process-errors
+            parse-errors
+            directory)
+        (while (setq directory (pop queue))
+          (with-temp-buffer
+            (if (zerop (call-process ,github-linguist-executable
+                                     nil
+                                     (list (current-buffer) nil)
+                                     nil
+                                     (github-linguist--system-file-name directory)
+                                     "--json"))
+                (condition-case nil
+                    (thread-last (github-linguist--parse-buffer)
+                      (github-linguist--update directory))
+                  (error (push directory parse-errors)))
+              (push directory process-errors))))
+        (list github-linguist-results
+              :parse-errors parse-errors
+              :process-errors process-errors)))
+   (pcase-lambda (`(,hashtable . ,plist))
+     (map-do (lambda (key value)
+               (puthash key value github-linguist-results))
+             hashtable)
+     (message "Updated %d linguist projects" (map-length hashtable))
+     (when-let (process-errors (plist-get plist :process-errors))
+       (message "Linguist failed on the following projects: %s"
+                process-errors))
+     (when-let (parse-errors (plist-get plist :parse-errors))
+       (message "Parsing failed on the results from the following projects: %s"
+                parse-errors)))))
+
+;;;###autoload
+(defun github-linguist-run (directory &optional callback)
+  "Run linguist on a project DIRECTORY with an optional CALLBACK."
+  (let ((name (file-name-base (string-remove-suffix "/" directory))))
+    (async-start-process (format "linguist-%s" name)
+                         github-linguist-executable
+                         (apply-partially #'github-linguist--handle-finish
+                                          directory
+                                          callback)
+                         (github-linguist--system-file-name directory)
+                         "--json")))
+
+(defun github-linguist--system-file-name (filename)
+  "Convert FILENAME into a system-compatible format."
+  (string-remove-suffix "/" (expand-file-name filename)))
+
+(defun github-linguist--parse-buffer ()
+  "Parse the output of Linguist and return its transformed result."
+  (goto-char (point-min))
+  (thread-last (json-parse-buffer :object-type 'alist)
+    (mapcar (pcase-lambda (`(,language . ,statistics))
+              (cons (symbol-name language)
+                    (read (cdr (assq 'percentage statistics))))))
+    (seq-sort-by #'cdr #'>)))
+
+(defun github-linguist--handle-finish (directory callback process)
+  "Register the result of linguist.
+
+This function saves the result of Linguist on DIRECTORY.
+
+If CALLBACK is a function, it also pass the result to the function.
+
+PROCESS is a process object. See `async-start-process' for details."
+  (let ((exit (process-exit-status process))
+        (buffer (process-buffer process)))
+    (if (zerop exit)
+        (with-current-buffer buffer
+          (thread-last (github-linguist--parse-buffer)
+            (github-linguist--update directory)
+            (funcall (or callback #'identity))))
+      (message "GitHub Linguist failed on %s" directory))))
+
+(provide 'github-linguist)
+;;; github-linguist.el ends here
