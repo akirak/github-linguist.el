@@ -136,9 +136,7 @@ If ARG is non-nil, existing projects are updated as well."
                           (project-known-project-roots))
                       (cl-remove-if #'file-remote-p)
                       (cl-remove-if-not #'github-linguist--git-project-p)))
-      (progn
-        (message "Started scanning %d linguist projects..." (length projects))
-        (github-linguist--run-many projects))
+      (github-linguist--run-many projects)
     (message "No project to update")))
 
 (defun github-linguist--git-project-p (root)
@@ -149,8 +147,12 @@ If ARG is non-nil, existing projects are updated as well."
 (defvar github-linguist-library (or load-file-name (buffer-file-name))
   "Path to this library.")
 
+(defvar github-linguist-start-time nil)
+
 (defun github-linguist--run-many (directories)
   "Run linguist on many DIRECTORIES and update the cache."
+  (message "Started scanning %d linguist projects..." (length directories))
+  (setq github-linguist-start-time (float-time))
   (async-start
    `(lambda ()
       (load ,github-linguist-library nil t)
@@ -180,7 +182,10 @@ If ARG is non-nil, existing projects are updated as well."
                (puthash key value github-linguist-results))
              hashtable)
      (github-linguist--save)
-     (message "Updated %d linguist projects" (map-length hashtable))
+     (message "Updated %d linguist projects (in %.1f sec)"
+              (map-length hashtable)
+              (- (float-time) github-linguist-start-time))
+     (setq github-linguist-start-time nil)
      (when-let (process-errors (plist-get plist :process-errors))
        (message "Linguist failed on the following projects: %s"
                 process-errors))
