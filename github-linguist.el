@@ -95,7 +95,9 @@ When you set this variable to nil, the result won't be saved."
 
 (defun github-linguist--normalize (directory)
   "Normalize the path to DIRECTORY."
-  (file-name-as-directory (file-truename directory)))
+  (file-name-as-directory (if (file-remote-p directory)
+                              directory
+                            (file-truename directory))))
 
 (defun github-linguist--ensure-table ()
   "Initialize the hash table."
