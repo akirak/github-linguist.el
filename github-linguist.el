@@ -175,6 +175,7 @@ If ARG is non-nil, existing projects are updated as well."
               :parse-errors parse-errors
               :process-errors process-errors)))
    (pcase-lambda (`(,hashtable . ,plist))
+     (github-linguist--ensure-table)
      (map-do (lambda (key value)
                (puthash key value github-linguist-results))
              hashtable)
