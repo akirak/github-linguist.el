@@ -157,7 +157,13 @@ If ARG is non-nil, existing projects are updated as well."
 
 ;;;###autoload
 (defun github-linguist-run (directory &optional callback)
-  "Run linguist on a project DIRECTORY with an optional CALLBACK."
+  "Run linguist on a project DIRECTORY with an optional CALLBACK.
+
+When called interactively, this function prints statistics on the
+current project."
+  (interactive (list (locate-dominating-file default-directory
+                                             github-linguist-git-dir)
+                     #'princ))
   (let ((name (file-name-base (string-remove-suffix "/" directory))))
     (async-start-process (format "linguist-%s" name)
                          github-linguist-executable
