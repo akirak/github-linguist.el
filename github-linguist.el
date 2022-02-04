@@ -56,11 +56,40 @@
   "Executable of the GitHub Linguist."
   :type 'file)
 
+(defcustom github-linguist-file (locate-user-emacs-file "github-linguist")
+  "File in which to save the data of projects.
+
+When you set this variable to nil, the result won't be saved."
+  :type '(choice (const :tag "Don't save" nil)
+                 file))
+
 (defcustom github-linguist-update nil
   "Whether to force updating of existing entries."
   :type 'boolean)
 
 (defvar github-linguist-results nil)
+
+;;;; File operations
+
+(defun github-linguist--load ()
+  "Load the data from the file."
+  (when (and github-linguist-file
+             (file-readable-p github-linguist-file))
+    (with-temp-buffer
+      (insert-file-contents github-linguist-file)
+      (goto-char (point-min))
+      (map-into (read (current-buffer))
+                '(hash-table :test equal)))))
+
+(defun github-linguist--save ()
+  "Write the data to the file."
+  (when github-linguist-file
+    (with-temp-buffer
+      (setq buffer-file-name github-linguist-file)
+      (prin1 (map-into github-linguist-results 'alist)
+             (current-buffer))
+      ;; TODO: There may be a better way to write to a file
+      (save-buffer))))
 
 ;;;; Table operations
 
@@ -68,15 +97,17 @@
   "Normalize the path to DIRECTORY."
   (file-name-as-directory (file-truename directory)))
 
-(defun github-linguist--init-table ()
+(defun github-linguist--ensure-table ()
   "Initialize the hash table."
-  (setq github-linguist-results (make-hash-table :test #'equal)))
+  (unless github-linguist-results
+    (setq github-linguist-results (or (github-linguist--load)
+                                      (make-hash-table :test #'equal)))))
 
 (defun github-linguist--lookup (directory)
   "Return the statistics on DIRECTORY, if any."
-  (when github-linguist-results
-    (gethash (github-linguist--normalize directory)
-             github-linguist-results)))
+  (github-linguist--ensure-table)
+  (gethash (github-linguist--normalize directory)
+           github-linguist-results))
 
 ;;;###autoload
 (defalias 'github-linguist-lookup #'github-linguist--lookup)
@@ -84,7 +115,7 @@
 (defun github-linguist--update (directory result)
   "Update the statistics on DIRECTORY to RESULT."
   (unless github-linguist-results
-    (github-linguist--init-table))
+    (github-linguist--ensure-table))
   (puthash (github-linguist--normalize directory)
            result
            github-linguist-results)
@@ -147,6 +178,7 @@ If ARG is non-nil, existing projects are updated as well."
      (map-do (lambda (key value)
                (puthash key value github-linguist-results))
              hashtable)
+     (github-linguist--save)
      (message "Updated %d linguist projects" (map-length hashtable))
      (when-let (process-errors (plist-get plist :process-errors))
        (message "Linguist failed on the following projects: %s"
@@ -198,9 +230,10 @@ PROCESS is a process object. See `async-start-process' for details."
         (buffer (process-buffer process)))
     (if (zerop exit)
         (with-current-buffer buffer
-          (thread-last (github-linguist--parse-buffer)
-            (github-linguist--update directory)
-            (funcall (or callback #'identity))))
+          (prog1 (thread-last (github-linguist--parse-buffer)
+                   (github-linguist--update directory)
+                   (funcall (or callback #'identity)))
+            (github-linguist--save)))
       (message "GitHub Linguist failed on %s" directory))))
 
 (provide 'github-linguist)
