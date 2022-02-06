@@ -143,8 +143,8 @@ If ARG is non-nil, existing projects are updated as well."
 
 (defun github-linguist--git-project-p (root)
   "Return non-nil if ROOT is a git directory."
-  (file-exists-p (expand-file-name github-linguist-git-dir
-                                   root)))
+  (file-directory-p (expand-file-name github-linguist-git-dir
+                                      root)))
 
 (defvar github-linguist-library (or load-file-name (buffer-file-name))
   "Path to this library.")
