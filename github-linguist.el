@@ -111,7 +111,7 @@ When you set this variable to nil, the result won't be saved."
   (gethash (github-linguist--normalize directory)
            github-linguist-results))
 
-;;;###autoload
+;;;###autoload (autoload 'github-linguist-lookup "github-linguist")
 (defalias 'github-linguist-lookup #'github-linguist--lookup)
 
 (defun github-linguist--update (directory result)
