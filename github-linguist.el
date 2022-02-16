@@ -1,4 +1,4 @@
-;;; github-linguist.el --- Cache results of GitHub Linguist -*- lexical-binding: t -*-
+;;; github-linguist.el --- Run GitHub Linguist on projects to collect information -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2022 Akira Komamura
 
