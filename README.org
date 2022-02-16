@@ -1,0 +1,47 @@
+* github-linguist.el
+# Add CI badges here
+This is a library that detect languages of your repositories using [[https://github.com/github/linguist][GitHub Linguist]].
+
+It integrates with project.el shipped with Emacs.
+** Installation
+You will need an executable of linguist.
+Set =github-linguist-executable= variable to the name of the executable.
+** Usage
+*** Collecting information
+- Run =github-linguist-update-projects= to collect information from all known projects.
+- =github-linguist-run= command display information on the current project.
+*** Using the information
+=github-linguist-lookup= function returns the languages of a given project directory.
+This function can be used, for example, for annotating completion candidates:
+
+#+begin_src emacs-lisp
+  (defun akirak-prompt-project-root (prompt)
+    "Select a project root with a PROMPT string."
+    (completing-read prompt (akirak-project-root-completions
+                             (project-known-project-roots))
+                     nil t))
+  
+  ;; Based on `project--file-completion-table' from project.el 0.8.1, but with a
+  ;; different category.
+  (defun akirak-project-root-completions (roots)
+    "Return a completion table for project ROOTS."
+    (lambda (string pred action)
+      (if (eq action 'metadata)
+          '(metadata . ((category . project-root)))
+        (complete-with-action action roots string pred))))
+  
+  ;;;###autoload
+  (defun akirak-project-root-annotator (root)
+    (when-let (language-alist (github-linguist-lookup root))
+      (cl-labels
+          ((dim (str) (propertize str 'face 'font-lock-comment-face))
+           (propertize-name (str) (propertize str 'face 'marginalia-string)) )
+        (concat (dim " (")
+                (mapconcat #'propertize-name
+                           (thread-last language-alist
+                             (seq-take-while (pcase-lambda (`(,_language . ,percent))
+                                               (> percent 30.0)))
+                             (mapcar #'car))
+                           (dim ", "))
+                (dim ")")))))
+#+end_src
