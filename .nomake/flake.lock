@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "async": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1451290400,
+        "narHash": "sha256-5nTkAnB6SOsFg9aXOxI5oON9RBByVO3Lq/vrmqHVgw4=",
+        "owner": "jwiegley",
+        "repo": "emacs-async",
+        "rev": "1794ea4955c6eeb62471b232a2d4fd6a6925a2c9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jwiegley",
+        "repo": "emacs-async",
+        "type": "github"
+      }
+    },
+    "github-linguist": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1644157547,
+        "narHash": "sha256-QR8vNhkDqRmtjdv/J8Z/0Oru/WRXJtnQ8NR1IkehRUQ=",
+        "owner": "akirak",
+        "repo": "github-linguist.el",
+        "rev": "f0dc0e0d11364d89834bc3c83f2db37c86d35d08",
+        "type": "github"
+      },
+      "original": {
+        "owner": "akirak",
+        "repo": "github-linguist.el",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "async": "async",
+        "github-linguist": "github-linguist"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
