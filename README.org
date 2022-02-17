@@ -55,4 +55,4 @@ This function can be used, for example, for annotating completion candidates:
 
 Below is an example screenshot:
 
-[[file:https:/raw.githubusercontent.com/akirak/github-linguist.el/screenshots/completion.png]]
+[[https:/raw.githubusercontent.com/akirak/github-linguist.el/screenshots/completion.png][https://raw.githubusercontent.com/akirak/github-linguist.el/screenshots/completion.png]]
