@@ -8,8 +8,15 @@ You will need an executable of linguist.
 Set =github-linguist-executable= variable to the name of the executable.
 ** Usage
 *** Collecting information
-- Run =github-linguist-update-projects= to collect information from all known projects.
-- =github-linguist-run= command display information on the current project.
+=github-linguist-run= command display information on the current project.
+
+Run =github-linguist-update-projects= to scan all known projects (as per =project-known-project-roots=).
+It would be possible to perform scanning periodically using =run-with-idle-timer=:
+
+#+begin_src emacs-lisp
+  ;; Run every 5 idle minutes
+  (run-with-idle-timer 300 nil #'github-linguist-update-projects)
+#+end_src
 *** Using the information
 =github-linguist-lookup= function returns the languages of a given project directory.
 This function can be used, for example, for annotating completion candidates:
@@ -45,3 +52,7 @@ This function can be used, for example, for annotating completion candidates:
                            (dim ", "))
                 (dim ")")))))
 #+end_src
+
+Below is an example screenshot:
+
+[[file:https:/raw.githubusercontent.com/akirak/github-linguist.el/screenshots/completion.png]]
