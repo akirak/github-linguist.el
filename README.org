@@ -2,7 +2,7 @@
 # Add CI badges here
 This is a library that detects languages of your repositories using [[https://github.com/github/linguist][GitHub Linguist]].
 
-It integrates with project.el shipped with Emacs.
+It integrates with project.el, either shipped with Emacs 28 or later, or from GNU ELPA.
 ** Installation
 You will need an executable of linguist.
 Set =github-linguist-executable= variable to the name of the executable.
