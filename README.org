@@ -1,6 +1,6 @@
 * github-linguist.el
 # Add CI badges here
-This is a library that detect languages of your repositories using [[https://github.com/github/linguist][GitHub Linguist]].
+This is a library that detects languages of your repositories using [[https://github.com/github/linguist][GitHub Linguist]].
 
 It integrates with project.el shipped with Emacs.
 ** Installation
@@ -8,9 +8,9 @@ You will need an executable of linguist.
 Set =github-linguist-executable= variable to the name of the executable.
 ** Usage
 *** Collecting information
-=github-linguist-run= command display information on the current project.
+To display languages in the current project directory, run =github-linguist-run= command.
 
-Run =github-linguist-update-projects= to scan all known projects (as per =project-known-project-roots=).
+To scan all known projects (as per =project-known-project-roots=), run =github-linguist-update-projects=.
 It would be possible to perform scanning periodically using =run-with-idle-timer=:
 
 #+begin_src emacs-lisp
