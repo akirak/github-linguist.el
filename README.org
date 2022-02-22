@@ -14,7 +14,7 @@ To scan all known projects (as per =project-known-project-roots=), run =github-l
 It would be possible to perform scanning periodically using =run-with-idle-timer=:
 
 #+begin_src emacs-lisp
-  ;; Run every 5 idle minutes
+  ;; Run every time the user is away for 5 minutes
   (run-with-idle-timer 300 nil #'github-linguist-update-projects)
 #+end_src
 *** Using the information
