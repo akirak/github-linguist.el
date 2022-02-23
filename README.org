@@ -56,3 +56,5 @@ This function can be used, for example, for annotating completion candidates:
 Below is an example screenshot:
 
 [[https:/raw.githubusercontent.com/akirak/github-linguist.el/screenshots/completion.png][https://raw.githubusercontent.com/akirak/github-linguist.el/screenshots/completion.png]]
+** See also
+- [[https://github.com/lassik/emacs-language-id][language-id]] provides mappings from language names to Emacs major modes.
