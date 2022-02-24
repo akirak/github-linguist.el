@@ -27,7 +27,7 @@ This function can be used, for example, for annotating completion candidates:
     (completing-read prompt (akirak-project-root-completions
                              (project-known-project-roots))
                      nil t))
-  
+
   ;; Based on `project--file-completion-table' from project.el 0.8.1, but with a
   ;; different category.
   (defun akirak-project-root-completions (roots)
@@ -36,8 +36,7 @@ This function can be used, for example, for annotating completion candidates:
       (if (eq action 'metadata)
           '(metadata . ((category . project-root)))
         (complete-with-action action roots string pred))))
-  
-  ;;;###autoload
+
   (defun akirak-project-root-annotator (root)
     (when-let (language-alist (github-linguist-lookup root))
       (cl-labels
@@ -46,9 +45,9 @@ This function can be used, for example, for annotating completion candidates:
         (concat (dim " (")
                 (mapconcat #'propertize-name
                            (thread-last language-alist
-                             (seq-take-while (pcase-lambda (`(,_language . ,percent))
-                                               (> percent 30.0)))
-                             (mapcar #'car))
+                                        (seq-take-while (pcase-lambda (`(,_language . ,percent))
+                                                          (> percent 30.0)))
+                                        (mapcar #'car))
                            (dim ", "))
                 (dim ")")))))
 #+end_src
