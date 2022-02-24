@@ -132,14 +132,23 @@ When you set this variable to nil, the result won't be saved."
 If ARG is non-nil, existing projects are updated as well."
   (interactive "P")
   (if-let (projects (thread-last
-                        (if (not (or arg github-linguist-update))
-                            (cl-remove-if #'github-linguist--lookup
-                                          (project-known-project-roots))
-                          (project-known-project-roots))
+                      (if (not (or arg github-linguist-update))
+                          (cl-remove-if #'github-linguist--lookup
+                                        (project-known-project-roots))
+                        (project-known-project-roots))
                       (cl-remove-if #'file-remote-p)
-                      (cl-remove-if-not #'github-linguist--git-project-p)))
+                      (cl-remove-if-not #'github-linguist--git-project-p)
+                      (github-linguist--unique-directories)))
       (github-linguist--run-many projects)
     (message "No project to update")))
+
+(defun github-linguist--unique-directories (directories)
+  "Remove duplicates in DIRECTORIES."
+  ;; A thorough solution would be to remove duplicates according to
+  ;; `file-truename'. However, it would make the problem complex, as there would
+  ;; be missing entries (of different paths pointing to the same real location)
+  ;; in the result.
+  (cl-remove-duplicates directories :test #'equal))
 
 (defun github-linguist--git-project-p (root)
   "Return non-nil if ROOT is a git directory."
