@@ -19,7 +19,7 @@ It would be possible to perform scanning periodically using =run-with-idle-timer
 #+end_src
 *** Using the information
 =github-linguist-lookup= function returns the languages of a given project directory.
-This function can be used, for example, for annotating completion candidates with [[https://github.com/minad/marginalia][marginalia]]:
+This function can be used, for example, for annotating completion candidates:
 
 #+begin_src emacs-lisp
   (defun akirak-prompt-project-root (prompt)
@@ -34,7 +34,8 @@ This function can be used, for example, for annotating completion candidates wit
     "Return a completion table for project ROOTS."
     (lambda (string pred action)
       (if (eq action 'metadata)
-          '(metadata . ((category . project-root)))
+          '(metadata . ((category . project-root)
+                        (annotation-function . akirak-project-root-annotator)))
         (complete-with-action action roots string pred))))
 
   (defun akirak-project-root-annotator (root)
@@ -50,9 +51,6 @@ This function can be used, for example, for annotating completion candidates wit
                                         (mapcar #'car))
                            (dim ", "))
                 (dim ")")))))
-
-  (add-to-list 'marginalia-annotator-registry
-               '(project-root akirak-project-root-annotator builtin none))
 #+end_src
 
 Below is an example screenshot:
