@@ -5,7 +5,7 @@
 
 This is a library that detects languages of your repositories using [[https://github.com/github/linguist][GitHub Linguist]].
 
-It integrates with project.el, either shipped with Emacs 28 or later, or from GNU ELPA.
+It integrates with project.el, either shipped with Emacs 28 or later, or from [[http://elpa.gnu.org/packages/project.html][GNU ELPA]].
 ** Installation
 You can install =github-linguist= package from [[https://melpa.org/#/][MELPA]].
 
