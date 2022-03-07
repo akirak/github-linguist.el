@@ -4,6 +4,7 @@
 [[https://github.com/akirak/github-linguist.el/actions/workflows/lint.yml][file:https://github.com/akirak/github-linguist.el/actions/workflows/lint.yml/badge.svg]]
 
 This is a library that detects languages of your repositories using [[https://github.com/github/linguist][GitHub Linguist]].
+You can use the data for various purposes, such as annotating completion candidates, grouping projects, etc.
 
 It integrates with project.el, either shipped with Emacs 28 or later, or from [[http://elpa.gnu.org/packages/project.html][GNU ELPA]].
 ** Installation
