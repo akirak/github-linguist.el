@@ -81,7 +81,7 @@ When you set this variable to nil, the result won't be saved."
       (map-into (read (current-buffer))
                 '(hash-table :test equal)))))
 
-(defun github-linguist--save ()
+(defun github-linguist--save (&optional silent)
   "Write the data to the file."
   (when github-linguist-file
     (with-temp-buffer
@@ -89,7 +89,8 @@ When you set this variable to nil, the result won't be saved."
       (prin1 (map-into github-linguist-results 'alist)
              (current-buffer))
       ;; TODO: There may be a better way to write to a file
-      (save-buffer))))
+      (let ((inhibit-message silent))
+        (save-buffer)))))
 
 ;;;; Table operations
 
@@ -247,10 +248,11 @@ PROCESS is a process object. See `async-start-process' for details."
         (buffer (process-buffer process)))
     (if (zerop exit)
         (with-current-buffer buffer
-          (prog1 (thread-last (github-linguist--parse-buffer)
+          (prog1 (thread-last
+                   (github-linguist--parse-buffer)
                    (github-linguist--update directory)
                    (funcall (or callback #'identity)))
-            (github-linguist--save)))
+            (github-linguist--save 'silent)))
       (message "GitHub Linguist failed on %s" directory))))
 
 (provide 'github-linguist)
