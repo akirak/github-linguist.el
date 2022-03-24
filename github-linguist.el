@@ -193,7 +193,7 @@ If ARG is non-nil, existing projects are updated as well."
                                          nil
                                          (list (current-buffer) error-file)
                                          nil
-                                         (github-linguist--system-file-name directory)
+                                         (convert-standard-filename directory)
                                          "--json"))
                     (condition-case nil
                         (progn
@@ -246,21 +246,17 @@ current project."
                          (apply-partially #'github-linguist--handle-finish
                                           directory
                                           callback)
-                         (github-linguist--system-file-name directory)
+                         (convert-standard-filename directory)
                          "--json")))
-
-(defun github-linguist--system-file-name (filename)
-  "Convert FILENAME into a system-compatible format."
-  (string-remove-suffix "/" (expand-file-name filename)))
 
 (defun github-linguist--parse-buffer ()
   "Parse the output of Linguist and return its transformed result."
   (goto-char (point-min))
   (thread-last (json-parse-buffer :object-type 'alist)
-    (mapcar (pcase-lambda (`(,language . ,statistics))
-              (cons (symbol-name language)
-                    (read (cdr (assq 'percentage statistics))))))
-    (seq-sort-by #'cdr #'>)))
+               (mapcar (pcase-lambda (`(,language . ,statistics))
+                         (cons (symbol-name language)
+                               (read (cdr (assq 'percentage statistics))))))
+               (seq-sort-by #'cdr #'>)))
 
 (defun github-linguist--handle-finish (directory callback process)
   "Register the result of linguist.
