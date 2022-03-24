@@ -54,6 +54,10 @@
 (defconst github-linguist-git-dir ".git"
   "Name of the git directory.")
 
+(defcustom github-linguist-git-executable "git"
+  "Executable of Git."
+  :type 'file)
+
 (defcustom github-linguist-executable "linguist"
   "Executable of the GitHub Linguist."
   :type 'file)
@@ -140,7 +144,7 @@ If ARG is non-nil, existing projects are updated as well."
                                         (project-known-project-roots))
                         (project-known-project-roots))
                       (cl-remove-if #'file-remote-p)
-                      (cl-remove-if-not #'github-linguist--git-project-p)
+                      (cl-remove-if-not #'github-linguist--git-head-p)
                       (github-linguist--unique-directories)))
       (github-linguist--run-many projects)
     (message "No project to update")))
@@ -153,10 +157,15 @@ If ARG is non-nil, existing projects are updated as well."
   ;; in the result.
   (cl-remove-duplicates directories :test #'equal))
 
-(defun github-linguist--git-project-p (root)
+(defun github-linguist--git-head-p (root)
   "Return non-nil if ROOT is a git directory."
-  (file-directory-p (expand-file-name github-linguist-git-dir
-                                      root)))
+  (let ((git-dir (expand-file-name github-linguist-git-dir root)))
+    (and (file-directory-p git-dir)
+         (call-process github-linguist-git-executable
+                       nil nil nil
+                       (concat "--work-tree=" root)
+                       (concat "--git-dir=" git-dir)
+                       "rev-parse" "HEAD"))))
 
 (defvar github-linguist-library (or load-file-name (buffer-file-name))
   "Path to this library.")
