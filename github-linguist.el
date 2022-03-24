@@ -49,8 +49,14 @@
   "Analyse projects using GitHub Linguist."
   :group 'project)
 
+(defconst github-linguist-error-buffer "*github-linguist errors*")
+
 (defconst github-linguist-git-dir ".git"
   "Name of the git directory.")
+
+(defcustom github-linguist-git-executable "git"
+  "Executable of Git."
+  :type 'file)
 
 (defcustom github-linguist-executable "linguist"
   "Executable of the GitHub Linguist."
@@ -138,7 +144,7 @@ If ARG is non-nil, existing projects are updated as well."
                                         (project-known-project-roots))
                         (project-known-project-roots))
                       (cl-remove-if #'file-remote-p)
-                      (cl-remove-if-not #'github-linguist--git-project-p)
+                      (cl-remove-if-not #'github-linguist--git-head-p)
                       (github-linguist--unique-directories)))
       (github-linguist--run-many projects)
     (message "No project to update")))
@@ -151,10 +157,15 @@ If ARG is non-nil, existing projects are updated as well."
   ;; in the result.
   (cl-remove-duplicates directories :test #'equal))
 
-(defun github-linguist--git-project-p (root)
+(defun github-linguist--git-head-p (root)
   "Return non-nil if ROOT is a git directory."
-  (file-directory-p (expand-file-name github-linguist-git-dir
-                                      root)))
+  (let ((git-dir (expand-file-name github-linguist-git-dir root)))
+    (and (file-directory-p git-dir)
+         (call-process github-linguist-git-executable
+                       nil nil nil
+                       (concat "--work-tree=" root)
+                       (concat "--git-dir=" git-dir)
+                       "rev-parse" "HEAD"))))
 
 (defvar github-linguist-library (or load-file-name (buffer-file-name))
   "Path to this library.")
@@ -169,41 +180,56 @@ If ARG is non-nil, existing projects are updated as well."
    `(lambda ()
       (load ,github-linguist-library nil t)
       (let ((queue ',directories)
+            (error-file (make-temp-file "emacs-gh-linguist-errors" nil ".txt"))
+            (error-buffer (generate-new-buffer "*github-linguist errors*"))
+            (num-success 0)
             process-errors
             parse-errors
             directory)
-        (while (setq directory (pop queue))
-          (with-temp-buffer
-            (if (zerop (call-process ,github-linguist-executable
-                                     nil
-                                     (list (current-buffer) nil)
-                                     nil
-                                     (github-linguist--system-file-name directory)
-                                     "--json"))
-                (condition-case nil
-                    (thread-last (github-linguist--parse-buffer)
-                      (github-linguist--update directory))
-                  (error (push directory parse-errors)))
-              (push directory process-errors))))
+        (unwind-protect
+            (while (setq directory (pop queue))
+              (with-temp-buffer
+                (if (zerop (call-process ,github-linguist-executable
+                                         nil
+                                         (list (current-buffer) error-file)
+                                         nil
+                                         (convert-standard-filename directory)
+                                         "--json"))
+                    (condition-case nil
+                        (progn
+                          (thread-last (github-linguist--parse-buffer)
+                                       (github-linguist--update directory))
+                          (cl-incf num-success))
+                      (error (push directory parse-errors)))
+                  (with-current-buffer error-buffer
+                    (insert-file-contents error-file))
+                  (push directory process-errors))))
+          (delete-file error-file))
         (list github-linguist-results
-              :parse-errors parse-errors
-              :process-errors process-errors)))
+              :success num-success
+              :error-string (when process-errors
+                              (with-current-buffer error-buffer
+                                (buffer-string)))
+              :parse-errors parse-errors)))
    (pcase-lambda (`(,hashtable . ,plist))
      (github-linguist--ensure-table)
      (map-do (lambda (key value)
                (puthash key value github-linguist-results))
              hashtable)
      (github-linguist--save)
-     (message "Updated %d linguist projects (in %.1f sec)"
-              (map-length hashtable)
-              (- (float-time) github-linguist-start-time))
-     (setq github-linguist-start-time nil)
-     (when-let (process-errors (plist-get plist :process-errors))
-       (message "Linguist failed on the following projects: %s"
-                process-errors))
-     (when-let (parse-errors (plist-get plist :parse-errors))
-       (message "Parsing failed on the results from the following projects: %s"
-                parse-errors)))))
+     (let* ((has-error (with-current-buffer (get-buffer-create github-linguist-error-buffer)
+                         (insert (or (plist-get plist :error-string) ""))
+                         (not (zerop (buffer-size)))))
+            (parse-errors (plist-get plist :parse-errors)))
+       (when parse-errors
+         (error "Failed to parse output of GitHub Linguist on some projects"))
+       (message "Updated %d linguist projects (in %.1f sec%s)"
+                (plist-get plist :success)
+                (- (float-time) github-linguist-start-time)
+                (if has-error
+                    (format ", see %s on errors" github-linguist-error-buffer)
+                  "")))
+     (setq github-linguist-start-time nil))))
 
 ;;;###autoload
 (defun github-linguist-run (directory &optional callback)
@@ -220,21 +246,17 @@ current project."
                          (apply-partially #'github-linguist--handle-finish
                                           directory
                                           callback)
-                         (github-linguist--system-file-name directory)
+                         (convert-standard-filename directory)
                          "--json")))
-
-(defun github-linguist--system-file-name (filename)
-  "Convert FILENAME into a system-compatible format."
-  (string-remove-suffix "/" (expand-file-name filename)))
 
 (defun github-linguist--parse-buffer ()
   "Parse the output of Linguist and return its transformed result."
   (goto-char (point-min))
   (thread-last (json-parse-buffer :object-type 'alist)
-    (mapcar (pcase-lambda (`(,language . ,statistics))
-              (cons (symbol-name language)
-                    (read (cdr (assq 'percentage statistics))))))
-    (seq-sort-by #'cdr #'>)))
+               (mapcar (pcase-lambda (`(,language . ,statistics))
+                         (cons (symbol-name language)
+                               (read (cdr (assq 'percentage statistics))))))
+               (seq-sort-by #'cdr #'>)))
 
 (defun github-linguist--handle-finish (directory callback process)
   "Register the result of linguist.
