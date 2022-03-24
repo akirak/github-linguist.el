@@ -182,6 +182,7 @@ If ARG is non-nil, existing projects are updated as well."
       (let ((queue ',directories)
             (error-file (make-temp-file "emacs-gh-linguist-errors" nil ".txt"))
             (error-buffer (generate-new-buffer "*github-linguist errors*"))
+            (num-success 0)
             process-errors
             parse-errors
             directory)
@@ -195,14 +196,17 @@ If ARG is non-nil, existing projects are updated as well."
                                          (github-linguist--system-file-name directory)
                                          "--json"))
                     (condition-case nil
-                        (thread-last (github-linguist--parse-buffer)
-                                     (github-linguist--update directory))
+                        (progn
+                          (thread-last (github-linguist--parse-buffer)
+                                       (github-linguist--update directory))
+                          (cl-incf num-success))
                       (error (push directory parse-errors)))
                   (with-current-buffer error-buffer
                     (insert-file-contents error-file))
                   (push directory process-errors))))
           (delete-file error-file))
         (list github-linguist-results
+              :success num-success
               :error-string (when process-errors
                               (with-current-buffer error-buffer
                                 (buffer-string)))
@@ -220,7 +224,7 @@ If ARG is non-nil, existing projects are updated as well."
        (when parse-errors
          (error "Failed to parse output of GitHub Linguist on some projects"))
        (message "Updated %d linguist projects (in %.1f sec%s)"
-                (map-length hashtable)
+                (plist-get plist :success)
                 (- (float-time) github-linguist-start-time)
                 (if has-error
                     (format ", see %s on errors" github-linguist-error-buffer)
