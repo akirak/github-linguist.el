@@ -188,22 +188,27 @@ If ARG is non-nil, existing projects are updated as well."
             directory)
         (unwind-protect
             (while (setq directory (pop queue))
-              (with-temp-buffer
-                (if (zerop (call-process ,github-linguist-executable
-                                         nil
-                                         (list (current-buffer) error-file)
-                                         nil
-                                         (convert-standard-filename directory)
-                                         "--json"))
-                    (condition-case nil
-                        (progn
-                          (thread-last (github-linguist--parse-buffer)
-                                       (github-linguist--update directory))
-                          (cl-incf num-success))
-                      (error (push directory parse-errors)))
-                  (with-current-buffer error-buffer
-                    (insert-file-contents error-file))
-                  (push directory process-errors))))
+              (let ((args (list (convert-standard-filename directory)
+                                "--json")))
+                (with-temp-buffer
+                  (if (zerop (apply #'call-process
+                                    ,github-linguist-executable
+                                    nil
+                                    (list (current-buffer) error-file)
+                                    nil
+                                    args))
+                      (condition-case nil
+                          (progn
+                            (thread-last (github-linguist--parse-buffer)
+                                         (github-linguist--update directory))
+                            (cl-incf num-success))
+                        (error (push directory parse-errors)))
+                    (with-current-buffer error-buffer
+                      (insert (format "[%s] Error while running (%s):\n"
+                                      (format-time-string "%F %R")
+                                      (cons github-linguist-executable args)))
+                      (insert-file-contents error-file))
+                    (push directory process-errors)))))
           (delete-file error-file))
         (list github-linguist-results
               :success num-success
