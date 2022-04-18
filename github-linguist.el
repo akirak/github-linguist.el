@@ -4,7 +4,7 @@
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1.1
-;; Package-Requires: ((emacs "27.1") (project "0.6") (async "1.9") (map "3"))
+;; Package-Requires: ((emacs "27.1") (project "0.8") (async "1.9") (map "3"))
 ;; Keywords: processes
 ;; URL: https://github.com/akirak/github-linguist.el
 
@@ -161,11 +161,11 @@ If ARG is non-nil, existing projects are updated as well."
   "Return non-nil if ROOT is a git directory."
   (let ((git-dir (expand-file-name github-linguist-git-dir root)))
     (and (file-directory-p git-dir)
-         (call-process github-linguist-git-executable
-                       nil nil nil
-                       (concat "--work-tree=" root)
-                       (concat "--git-dir=" git-dir)
-                       "rev-parse" "HEAD"))))
+         (zerop (call-process github-linguist-git-executable
+                              nil nil nil
+                              (concat "--work-tree=" root)
+                              (concat "--git-dir=" git-dir)
+                              "rev-parse" "HEAD")))))
 
 (defvar github-linguist-library (or load-file-name (buffer-file-name))
   "Path to this library.")
@@ -188,22 +188,30 @@ If ARG is non-nil, existing projects are updated as well."
             directory)
         (unwind-protect
             (while (setq directory (pop queue))
-              (with-temp-buffer
-                (if (zerop (call-process ,github-linguist-executable
-                                         nil
-                                         (list (current-buffer) error-file)
-                                         nil
-                                         (convert-standard-filename directory)
-                                         "--json"))
-                    (condition-case nil
-                        (progn
-                          (thread-last (github-linguist--parse-buffer)
-                                       (github-linguist--update directory))
-                          (cl-incf num-success))
-                      (error (push directory parse-errors)))
-                  (with-current-buffer error-buffer
-                    (insert-file-contents error-file))
-                  (push directory process-errors))))
+              (let ((args (list (thread-last
+                                  (expand-file-name directory)
+                                  (string-remove-suffix "/")
+                                  (convert-standard-filename))
+                                "--json")))
+                (with-temp-buffer
+                  (if (zerop (apply #'call-process
+                                    ,github-linguist-executable
+                                    nil
+                                    (list (current-buffer) error-file)
+                                    nil
+                                    args))
+                      (condition-case nil
+                          (progn
+                            (thread-last (github-linguist--parse-buffer)
+                                         (github-linguist--update directory))
+                            (cl-incf num-success))
+                        (error (push directory parse-errors)))
+                    (with-current-buffer error-buffer
+                      (insert (format "[%s] Error while running (%s):\n"
+                                      (format-time-string "%F %R")
+                                      (cons github-linguist-executable args)))
+                      (insert-file-contents error-file))
+                    (push directory process-errors)))))
           (delete-file error-file))
         (list github-linguist-results
               :success num-success
@@ -246,7 +254,10 @@ current project."
                          (apply-partially #'github-linguist--handle-finish
                                           directory
                                           callback)
-                         (convert-standard-filename directory)
+                         (thread-last
+                           (expand-file-name directory)
+                           (string-remove-suffix "/")
+                           (convert-standard-filename))
                          "--json")))
 
 (defun github-linguist--parse-buffer ()

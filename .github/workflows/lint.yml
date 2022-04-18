@@ -1,5 +1,6 @@
 name: 'lint'
-on: { push: { paths: [ '**.el' ] } }
+on:
+  push:
 jobs:
   lint:
     runs-on: ubuntu-latest

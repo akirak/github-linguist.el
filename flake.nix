@@ -7,8 +7,7 @@
       flake = false;
     };
     melpa = {
-      # url = "github:melpa/melpa";
-      url = "github:akirak/melpa/github-linguist";
+      url = "github:melpa/melpa";
       flake = false;
     };
 
@@ -28,6 +27,9 @@
       src = ./.;
       localPackages = [
         "github-linguist"
+      ];
+      extraPackages = [
+        "project"
       ];
     };
 }
