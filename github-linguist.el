@@ -188,7 +188,10 @@ If ARG is non-nil, existing projects are updated as well."
             directory)
         (unwind-protect
             (while (setq directory (pop queue))
-              (let ((args (list (convert-standard-filename directory)
+              (let ((args (list (thread-last
+                                  (expand-file-name directory)
+                                  (string-remove-suffix "/")
+                                  (convert-standard-filename))
                                 "--json")))
                 (with-temp-buffer
                   (if (zerop (apply #'call-process
@@ -251,7 +254,10 @@ current project."
                          (apply-partially #'github-linguist--handle-finish
                                           directory
                                           callback)
-                         (convert-standard-filename directory)
+                         (thread-last
+                           (expand-file-name directory)
+                           (string-remove-suffix "/")
+                           (convert-standard-filename))
                          "--json")))
 
 (defun github-linguist--parse-buffer ()
