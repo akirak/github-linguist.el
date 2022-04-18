@@ -29,5 +29,8 @@
       localPackages = [
         "github-linguist"
       ];
+      extraPackages = [
+        "project"
+      ];
     };
 }
