@@ -161,11 +161,11 @@ If ARG is non-nil, existing projects are updated as well."
   "Return non-nil if ROOT is a git directory."
   (let ((git-dir (expand-file-name github-linguist-git-dir root)))
     (and (file-directory-p git-dir)
-         (call-process github-linguist-git-executable
-                       nil nil nil
-                       (concat "--work-tree=" root)
-                       (concat "--git-dir=" git-dir)
-                       "rev-parse" "HEAD"))))
+         (zerop (call-process github-linguist-git-executable
+                              nil nil nil
+                              (concat "--work-tree=" root)
+                              (concat "--git-dir=" git-dir)
+                              "rev-parse" "HEAD")))))
 
 (defvar github-linguist-library (or load-file-name (buffer-file-name))
   "Path to this library.")
