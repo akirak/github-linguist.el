@@ -19,11 +19,11 @@
     "github-linguist": {
       "flake": false,
       "locked": {
-        "lastModified": 1644157547,
-        "narHash": "sha256-QR8vNhkDqRmtjdv/J8Z/0Oru/WRXJtnQ8NR1IkehRUQ=",
+        "lastModified": 1648100908,
+        "narHash": "sha256-16F7RQHdwpTiqFxrIrK4slsV04DHOvCyDIYRcn8fkf4=",
         "owner": "akirak",
         "repo": "github-linguist.el",
-        "rev": "f0dc0e0d11364d89834bc3c83f2db37c86d35d08",
+        "rev": "6e3fc58a465e6726dcba6da038f959028c62223b",
         "type": "github"
       },
       "original": {
