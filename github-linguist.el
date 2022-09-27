@@ -158,7 +158,7 @@ If ARG is non-nil, existing projects are updated as well."
   (cl-remove-duplicates directories :test #'equal))
 
 (defun github-linguist--git-head-p (root)
-  "Return non-nil if ROOT is a git directory."
+  "Return non-nil if ROOT contains a git directory."
   (let ((git-dir (expand-file-name github-linguist-git-dir root)))
     (and (file-directory-p git-dir)
          (zerop (call-process github-linguist-git-executable
