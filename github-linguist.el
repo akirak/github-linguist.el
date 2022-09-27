@@ -163,7 +163,7 @@ If ARG is non-nil, existing projects are updated as well."
     (and (file-directory-p git-dir)
          (zerop (call-process github-linguist-git-executable
                               nil nil nil
-                              (concat "--work-tree=" root)
+                              (concat "--work-tree=" (expand-file-name root))
                               (concat "--git-dir=" git-dir)
                               "rev-parse" "HEAD")))))
 
