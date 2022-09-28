@@ -92,8 +92,11 @@ When you set this variable to nil, the result won't be saved."
   (when github-linguist-file
     (with-temp-buffer
       (setq buffer-file-name github-linguist-file)
-      (prin1 (map-into github-linguist-results 'alist)
-             (current-buffer))
+      (let ((print-length nil)
+            (print-level nil)
+            (print-symbols-bare t))
+        (prin1 (map-into github-linguist-results 'alist)
+               (current-buffer)))
       ;; TODO: There may be a better way to write to a file
       (let ((inhibit-message silent))
         (save-buffer)))))
