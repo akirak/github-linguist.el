@@ -90,6 +90,8 @@ When you set this variable to nil, the result won't be saved."
 (defun github-linguist--save (&optional silent)
   "Write the data to the file."
   (when github-linguist-file
+    (unless (file-writable-p github-linguist-file)
+      (error "The file github-linguist-file exists but not writable"))
     (with-temp-buffer
       (setq buffer-file-name github-linguist-file)
       (let ((print-length nil)
