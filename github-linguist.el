@@ -98,7 +98,8 @@ When you set this variable to nil, the result won't be saved."
         (prin1 (map-into github-linguist-results 'alist)
                (current-buffer)))
       ;; TODO: There may be a better way to write to a file
-      (let ((inhibit-message silent))
+      (let ((inhibit-message silent)
+            (make-backup-files nil))
         (save-buffer)))))
 
 ;;;; Table operations
