@@ -294,5 +294,65 @@ PROCESS is a process object. See `async-start-process' for details."
             (github-linguist--save 'silent)))
       (message "GitHub Linguist failed on %s" directory))))
 
+;;;; Using the data
+
+;;;###autoload
+(defun github-linguist-switch-project-by-language (language)
+  "Switch to a project containing LANGUAGE."
+  (interactive (list (github-linguist-complete-language "Language: ")))
+  (if-let (candidates (github-linguist--projects-by-language language))
+      (let ((dir (github-linguist--prompt-project "Select project: " candidates)))
+        (project-switch-project dir))
+    (user-error "No project containing %s" language)))
+
+(defun github-linguist-complete-language (prompt)
+  "Complete a linguist language name with PROMPT."
+  (let ((completions-sort nil))
+    (completing-read prompt (github-linguist--used-languages-with-total) nil t)))
+
+(defun github-linguist--prompt-project (prompt candidates)
+  (let (history-add-new-input
+        (completion-extra-properties (list :category 'directory)))
+    (completing-read prompt candidates
+                     nil t nil (when (boundp 'project--dir-history)
+                                 'project--dir-history))))
+
+(defun github-linguist--used-languages-with-total ()
+  (github-linguist--ensure-table)
+  (cl-flet
+      ((sum-values (group)
+         (cons (car group)
+               (cl-reduce #'+
+                          (mapcar #'cdr (cdr group))
+                          :initial-value 0)))
+       (compare-cdr (a b)
+         (> (cdr a) (cdr b))))
+    (thread-last
+      (map-values github-linguist-results)
+      (apply #'append)
+      (seq-group-by #'car)
+      (mapcar #'sum-values)
+      (seq-sort #'compare-cdr))))
+
+(defun github-linguist--projects-by-language (language &optional threshold)
+  (cl-flet
+      ((pred (_dir stat)
+         (pcase (assoc language stat)
+           (`(,_ . ,percentage)
+            (> percentage (or threshold 20.0))))))
+    (thread-last
+      (map-filter #'pred github-linguist-results)
+      (mapcar #'car)
+      (mapcar #'abbreviate-file-name))))
+
+(defun github-linguist--known-projects-by-language (language)
+  (cl-flet
+      ((same-abbr-p (a b)
+         (equal (abbreviate-file-name a)
+                (abbreviate-file-name b))))
+    (seq-intersection (project-known-project-roots)
+                      (github-linguist--projects-by-language language)
+                      #'same-abbr-p)))
+
 (provide 'github-linguist)
 ;;; github-linguist.el ends here
